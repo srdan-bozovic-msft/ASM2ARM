@@ -6,6 +6,11 @@ function NewAuthHeader
     {
         throw "You need to login first."
     }
+
+    if($null -eq $context.Subscription)
+    {
+        throw "You need to assign subscription or login to proper Azure Environment."
+    }
     
     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile;
     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile);
@@ -66,6 +71,48 @@ function HandleException($exception)
     else
     {
         Write-Host $exception.Exception.Message -ForegroundColor Red
+    }
+}
+
+function Get-AzureRmService
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]
+        $ServiceName,
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Slot
+    )
+
+    try
+    {
+        if([string]::IsNullOrEmpty($ServiceName))
+        {
+            $uri = "/services/hostedservices"        
+            $result = InvokeAsmMethod -Uri $uri -Method Get
+            return $result.HostedServices.HostedService
+        }
+        else
+        {
+            if([string]::IsNullOrEmpty($Slot))
+            {
+                $uri = "/services/hostedservices/$ServiceName"
+                $result = InvokeAsmMethod -Uri $uri -Method Get
+                return $result.HostedService
+            }
+            else
+            {
+                $uri = "/services/hostedservices/$ServiceName/deploymentslots/$Slot"        
+                $result = InvokeAsmMethod -Uri $uri -Method Get
+                return $result.Deployment
+            }
+        }
+    }
+    catch
+    {
+        HandleException -exception $_
     }
 }
 
@@ -259,6 +306,5 @@ function Remove-AzureRmReservedIP
 Export-ModuleMember -Function "Get-*"
 Export-ModuleMember -Function "New-*"
 Export-ModuleMember -Function "Remove-*"
-
 
 
